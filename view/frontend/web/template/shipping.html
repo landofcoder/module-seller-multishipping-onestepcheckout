@@ -1,0 +1,226 @@
+
+<!-- ko if: !quoteIsVirtual() -->
+<li id="shipping" class="checkout-shipping-address">
+    <if args="visibleAccountInformation">
+        <div class="step-title" data-role="title">
+                <i class="fa account_information_title"></i>
+                <span data-bind="i18n: 'Account Information'"></span>
+        </div>
+        <div class="step-content" data-role="content">
+            <each args="getRegion('customer-email')" render="" />
+            <each args="getRegion('social-login')" render="" />
+        </div>
+    </if>
+    
+    <!-- ko if: isBillingBeforeShipping() -->
+        <!-- Inline Billing address form -->
+        <!-- ko foreach: getRegion('billing-address') -->
+        <!-- ko template: getTemplate() --><!-- /ko -->
+        <!-- /ko -->
+        <div class="shipping-address-same-as-billing-block field choice">
+            <input type="checkbox" name="shipping-address-same-as-billing"
+                    data-bind="checked: isAddressSameAsBilling, attr: {id: 'shipping-address-same-as-billing'}"/>
+            <label data-bind="attr: {for: 'shipping-address-same-as-billing'}">
+                <span data-bind="i18n: 'This address is also my shipping address'"></span>
+            </label>
+        </div>
+        
+        <div data-bind="visible:!isAddressSameAsBilling()">
+            <each args="getRegion('before-shipping-address')" render="" />
+            <div class="step-title" data-role="title">
+                    <i class="fa shipping_address_title"></i>
+                    <span data-bind="i18n: 'Shipping Address'"></span>
+            </div>
+            <div id="checkout-step-shipping"
+                class="step-content"
+                data-role="content">
+                <each args="getRegion('address-list')" render="" />
+                <each args="getRegion('address-list-additional-addresses')" render="" />
+        
+                <!-- Address form pop up -->
+                <if args="!isFormInline">
+                    <button type="button"
+                            class="action action-show-popup"
+                            click="showFormPopUp"
+                            visible="!isNewAddressAdded()">
+                        <span translate="'New Address'" />
+                    </button>
+                    <div id="opc-new-shipping-address"
+                            visible="isFormPopUpVisible()"
+                            render="shippingFormTemplate" />
+                </if>
+        
+                <each args="getRegion('before-form')" render="" />
+        
+                <!-- Inline address form -->
+                <render if="isFormInline" args="shippingFormTemplate" />
+            </div>
+            <each args="getRegion('after-shipping-address')" render="" />
+        </div>
+    <!-- /ko -->
+    <!-- ko ifnot: isBillingBeforeShipping() -->
+        <each args="getRegion('before-shipping-address')" render="" />
+        <div class="step-title" data-role="title">
+                <i class="fa shipping_address_title"></i>
+                <span data-bind="i18n: 'Shipping Address'"></span>
+        </div>
+        <div id="checkout-step-shipping"
+            class="step-content"
+            data-role="content">
+            <each args="getRegion('address-list')" render="" />
+            <each args="getRegion('address-list-additional-addresses')" render="" />
+    
+            <!-- Address form pop up -->
+            <if args="!isFormInline">
+                <button type="button"
+                        class="action action-show-popup"
+                        click="showFormPopUp"
+                        visible="!isNewAddressAdded()">
+                    <span translate="'New Address'" />
+                </button>
+                <div id="opc-new-shipping-address"
+                        visible="isFormPopUpVisible()"
+                        render="shippingFormTemplate" />
+            </if>
+    
+            <each args="getRegion('before-form')" render="" />
+    
+            <!-- Inline address form -->
+            <render if="isFormInline" args="shippingFormTemplate" />
+            <!-- Inline Billing address form -->
+            <!-- ko foreach: getRegion('billing-address') -->
+            <!-- ko template: getTemplate() --><!-- /ko -->
+            <!-- /ko -->
+        </div>
+        <each args="getRegion('after-shipping-address')" render="" />
+    <!-- /ko -->
+    <br class="clearfix" />
+    
+</li>
+<!-- ko ifnot: shouldHideShipping() -->
+<li id="opc-shipping_method"
+    class="checkout-shipping-method"
+    data-bind="fadeVisible: visible(), blockLoader: isLoading"
+    role="presentation">
+    <each args="getRegion('before-shipping-method')" render="" />
+    <div class="checkout-shipping-method">
+
+        <!-- ko ifnot: shouldHideShipping() -->
+        <div class="step-title" data-role="title">
+            <i class="fa shipping_methods_title"></i>
+            <span data-bind="i18n: 'Shipping Methods'"></span>
+        </div>
+        <!-- /ko -->
+
+        <each args="getRegion('before-shipping-method-form')" render="" />
+
+        <div id="checkout-step-shipping_method"
+         class="step-content"
+         data-role="content"
+         role="tabpanel"
+         aria-hidden="false">
+        <!-- ko if: rates().length  -->
+        <form class="form methods-shipping" id="co-shipping-method-form" data-bind="submit: setShippingInformation"
+              novalidate="novalidate">
+            <div id="checkout-shipping-method-load">
+                <div class="table-checkout-shipping-method">
+                    <div class="tbody-checkout-shipping-method">
+                        <label class="label" id="total-price"></label>
+                        <div class="items methods" data-bind="foreach: shippingRateGroups">
+                            <div class="seller-multishipping-method">
+                                <div class="item-title">
+                                    <span class="lofmp-multishipping-seller-name"
+                                          data-bind="text: $parent.getSellerName($data)"></span>
+                                </div>
+                                <div class="item-products">
+                                    <!-- ko foreach: $parent.getProductBySeller($data) -->
+                                    <div class="item-product"><span data-bind="text: $data"></span></div>
+                                    <!-- /ko -->
+                                </div>
+                                <div class="item-options seller-rates"
+                                     data-bind="foreach: $parent.getRatesForGroup($data)">
+                                    <!-- ko if: carrier_code == 'seller_rates'  -->
+                                    <div
+                                        data-bind="css: {'field choice item': available, 'message error': !available}">
+                                        <!-- ko ifnot: (available) -->
+                                        <div data-bind="text: error_message"></div>
+                                        <!-- /ko -->
+                                        <!-- ko if: (available) -->
+                                        <input
+                                            type="radio"
+                                            class="radio"
+                                            data-bind="click: $parents[1].selectVirtualMethod,
+                                            attr: {
+                                                    value: carrier_code + '_' + method_code,
+                                                    id: carrier_code + '_' + method_code + $parentContext.$index(),
+                                                    name: 'estimate_method' + $parentContext.$index(),
+                                                    price: amount
+                                                }
+                                            " required/>
+                                        <label class="label"
+                                               data-bind="attr: {for: carrier_code + '_' + method_code + $parentContext.$index()}">
+                                            <span class="lofmp-multishipping-price"
+                                                  data-bind="text: $parents[1].getFormattedPrice(amount)"></span>
+                                            <span class="lofmp-multishipping-method"
+                                                  data-bind="text: method_title"></span>
+                                        </label>
+                                        <!-- /ko -->
+                                    </div>
+                                    <!-- /ko -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="onepage-checkout-shipping-method-additional-load">
+                <!-- ko foreach: getRegion('shippingAdditional') -->
+                <!-- ko template: getTemplate() --><!-- /ko -->
+                <!-- /ko -->
+            </div>
+            <!-- ko if: errorValidationMessage().length > 0 -->
+            <div class="message notice">
+                <span><!-- ko text: errorValidationMessage()--><!-- /ko --></span>
+            </div>
+            <!-- /ko -->
+            <div class="actions-toolbar" id="shipping-method-buttons-container">
+                <div class="primary">
+                    <button data-role="opc-continue" type="submit" class="button action continue primary">
+                        <span><!-- ko i18n: 'Next'--><!-- /ko --></span>
+                    </button>
+                </div>
+            </div>
+        </form>
+        <!-- /ko -->
+        <!-- ko ifnot: rates().length > 0 -->
+        <div class="no-quotes-block"><!-- ko i18n: 'Sorry, no quotes are available for this order at this time'-->
+            <!-- /ko --></div><!-- /ko -->
+    </div>
+    </div>
+    <each args="getRegion('after-shipping-method')" render="" />
+</li>
+<!-- /ko -->
+<!-- /ko -->
+<!-- ko if: quoteIsVirtual() -->
+<li id="shipping" class="checkout-shipping-address">
+<if args="visibleAccountInformation">
+    <div class="step-title" data-role="title">
+            <i class="fa account_information_title"></i>
+            <span data-bind="i18n: 'Account Information'"></span>
+    </div>
+    <div class="step-content" data-role="content">
+        <each args="getRegion('customer-email')" render="" />
+        <each args="getRegion('social-login')" render="" />
+    </div>
+</if>
+<div id="checkout-step-shipping"
+        class="step-content"
+        data-role="content">
+    <!-- Inline Billing address form -->
+    <!-- ko foreach: getRegion('billing-address') -->
+    <!-- ko template: getTemplate() --><!-- /ko -->
+    <!-- /ko -->
+</div>
+<br class="clearfix" />
+</li>
+<!-- /ko -->
