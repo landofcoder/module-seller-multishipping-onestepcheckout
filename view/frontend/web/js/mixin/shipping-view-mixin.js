@@ -15,7 +15,10 @@
     'Magento_Customer/js/model/address-list',
     'mage/translate',
     'jquery',
-    'Ecomteck_OneStepCheckout/js/jquery/garlic.min'
+    'Ecomteck_OneStepCheckout/js/jquery/garlic.min',
+     'Magento_Catalog/js/price-utils',
+     'Magento_Checkout/js/checkout-data',
+     'Magento_Checkout/js/action/select-shipping-method'
 ], function (
     ko,
     customer,
@@ -28,7 +31,11 @@
     getPaymentInformation,
     addressList,
     $t,
-    $
+    $,
+    garlic,
+    priceUtils,
+    checkoutData,
+    selectShippingMethodAction
 ) {
     'use strict';
 
@@ -61,9 +68,9 @@
                 if (selectedShippingMethod) {
                     this.selectShippingMethod(selectedShippingMethod);
                 }
-                
+
                 getPaymentInformation();
-                
+
                 if (window.checkoutConfig.onestepcheckout.autoComplete.autoSaveFillCustomerInfo) {
                     $('.form-login').garlic({
                         onRetrieve: function ( elem, retrievedValue ) {
@@ -152,7 +159,7 @@
             isBillingBeforeShipping: function () {
                 return window.checkoutConfig.onestepcheckout.moveBillingAddressBeforeShippingAddressEnabled;
             },
-            
+
 
             /**
              * These steps don't set itself to visible on refresh.
@@ -184,21 +191,21 @@
                 if (!this.isBillingBeforeShipping() || !$('[name="shipping-address-same-as-billing"]').is(":checked")) {
                     if (this.isFormInline) {
                         this.source.set('params.invalid', false);
-    
+
                         if (typeof this.triggerShippingDataValidateEvent !== 'undefined') {
                             this.triggerShippingDataValidateEvent();
                         }
-    
+
                         if (this.source.get('params.invalid')) {
                             this.focusInvalid();
                             validateResult = validateResult && false;
                         }
-    
+
                         shippingAddress = quote.shippingAddress();
                         addressData = addressConverter.formAddressDataToQuoteAddress(
                             this.source.get('shippingAddress')
                         );
-    
+
                         //Copy form data to quote shipping address object
                         for (field in addressData) {
                             if (addressData.hasOwnProperty(field) && //eslint-disable-line max-depth
@@ -213,18 +220,18 @@
                                 break;
                             }
                         }
-    
+
                         if (customer.isLoggedIn()) {
                             shippingAddress['save_in_address_book'] = 1;
                         }
                         selectShippingAddress(shippingAddress);
                     }
-                    
+
                 }
 
                 if (!emailValidationResult) {
                     $(loginFormSelector + ' input[name=username]').focus();
-    
+
                     validateResult = validateResult && false;
                 }
 
@@ -242,6 +249,57 @@
             selectShippingMethod: function (shippingMethod) {
                 this._super(shippingMethod);
                 shippingSaveProcessor.saveShippingInformation();
+                return true;
+            },
+
+            selectVirtualMethod: function (shippingMethod) {
+                var flagg = true;
+                var METHOD_SEPARATOR = ':';
+                var rates = [];
+                var flag = false;
+                var count = 0;
+                var price = 0;
+                var textPrice = $t('Total Shipping Cost: ')
+                $('.seller-rates').each(function () {
+                    var $seller_rates = $(this);
+                    var $radio = $seller_rates.find('.radio:checked');
+                    if ($radio.is(':checked')) {
+                        count++;
+                        flag = true;
+                        rates.push($radio.val());
+                        price += Number($radio.attr('price'));
+                    }
+                })
+                var total = price.toFixed(2);
+                var totalPrice = priceUtils.formatPrice(total, quote.getPriceFormat());
+                $("#total-price").html(textPrice + totalPrice);
+                window.selected = count;
+                if (!flag) {
+                    flagg = false;
+                }
+                if (flagg) {
+                    var rate = '';
+                    for (var i = 0; i < rates.length; i++) {
+                        if (i != rates.length) {
+                            rates[i] = rates[i].substring(13);
+                        }
+                        if (i == 0) {
+                            rate = rates[i];
+                        } else {
+                            rate = rate + METHOD_SEPARATOR + rates[i];
+                        }
+                    }
+                    if (count == window.sellerArray) {
+                        var selectShippingMethod = Object.assign({}, shippingMethod);
+                        selectShippingMethod.method_code = rate;
+                        selectShippingMethod.method_title = window.checkoutConfig.sellermultishipping.method_title;
+                        selectShippingMethod.carrier_title = window.checkoutConfig.sellermultishipping.carrier_title;
+                        selectShippingMethod.amount = price;
+                        selectShippingMethodAction(selectShippingMethod);
+                        checkoutData.setSelectedShippingRate(rate);
+                        shippingSaveProcessor.saveShippingInformation();
+                    }
+                }
                 return true;
             },
 
